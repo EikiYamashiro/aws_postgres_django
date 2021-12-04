@@ -162,33 +162,6 @@ class Cursor():
     def get_vpc_id(self):
         return self.client.describe_vpcs()['Vpcs'][0]['VpcId']
 
-class Cursor():
-    
-    def __init__(self , client, region, name, keypair=None):
-        self.client = client
-        self.region = region
-        self.name = name
-        self.keypair = keypair
-        
-    def createKeyPair(self):
-        self.keypair = create_key_pair(self.client, self.name)
-        
-    def setKeyPair(self, keypair):
-        self.keypair = keypair
-        
-    def deleteKeyPair(self):
-        response = input(f"Are you sure you want to delete {self.name}? (y/n)")
-        if response == 'y' or response == "yes":
-            
-            delete_key_pair(self.client, self.name)
-            
-        else: 
-            logging.info("Operation canceled")
-            print("Operation canceled")
-            
-    def get_vpc_id(self):
-        return self.client.describe_vpcs()['Vpcs'][0]['VpcId']
-
 class Instance():
     
     def __init__(self, cursor, region):
@@ -286,6 +259,8 @@ class Instance():
 def create_image(instance):
     
     response = instance.cursor.client.create_image(InstanceId=instance.id, Name=f'{instance.cursor.region}-image')
+    image_waiter = instance.cursor.client.get_waiter("image_available")
+    image_waiter.wait(ImageIds=response["ImageId"])
     return response["ImageId"]
     
 def delete_image_function(client, image_id):
@@ -482,6 +457,14 @@ SECURITY_GROUP_DJANGO = [
         'IpProtocol': 'tcp',
         'FromPort': 8080,
         'ToPort': 8080,
+        'IpRanges': [
+            {'CidrIp': '0.0.0.0/0'}
+        ]
+    },
+    {
+        'IpProtocol': 'tcp',
+        'FromPort': 80,
+        'ToPort': 80,
         'IpRanges': [
             {'CidrIp': '0.0.0.0/0'}
         ]
