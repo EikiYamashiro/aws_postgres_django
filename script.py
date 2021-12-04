@@ -39,7 +39,7 @@ def delete_key_pair(client , name):
         if KeyPair["KeyName"] == name:
 
             response = client.delete_key_pair(KeyName=name)
-            logging.info("KeyPair {name} deleted successfully")
+            logging.info(f"KeyPair {name} deleted successfully")
             print("KeyPair ",name," deleted successfully")
             
             return True
@@ -260,7 +260,7 @@ def create_image(instance):
     
     response = instance.cursor.client.create_image(InstanceId=instance.id, Name=f'{instance.cursor.region}-image')
     image_waiter = instance.cursor.client.get_waiter("image_available")
-    image_waiter.wait(ImageIds=response["ImageId"])
+    image_waiter.wait(ImageIds=[response["ImageId"]])
     return response["ImageId"]
     
 def delete_image_function(client, image_id):
