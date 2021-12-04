@@ -18,7 +18,7 @@ def create_key_pair(client, name):
 
         if KeyPair["KeyName"] == name:
             
-            logging.info("KeyName ", name, " already exists")
+            logging.info(f"KeyName {name} already exists")
             print("KeyName ", name, " already exists")
 
             name_flag = False
@@ -28,7 +28,7 @@ def create_key_pair(client, name):
     if name_flag:
         
         response = client.create_key_pair(KeyName=name)
-        logging.info("KeyPair ",name," created successfully")
+        logging.info("KeyPair {name} created successfully")
         print("KeyPair ",name," created successfully")
         return response
 
@@ -39,14 +39,14 @@ def delete_key_pair(client , name):
         if KeyPair["KeyName"] == name:
 
             response = client.delete_key_pair(KeyName=name)
-            logging.info("KeyPair ",name," deleted successfully")
+            logging.info("KeyPair {name} deleted successfully")
             print("KeyPair ",name," deleted successfully")
             
             return True
             
             break
 
-    logging.info("Unable to delete KeyPair ", name)
+    logging.info(f"Unable to delete KeyPair {name}")
     print("Unable to delete KeyPair ", name)
     return False
 
@@ -246,7 +246,7 @@ class Instance():
     
             waiter.wait(InstanceIds=[self.id])
             
-            logging.info("Instance ",self.id," deleted successfully")
+            logging.info(f"Instance {self.id}deleted successfully")
             print("Instance ",self.id," deleted successfully")
             
         else: 
@@ -264,7 +264,7 @@ class Instance():
         
         self.cursor.client.authorize_security_group_ingress(GroupId = self.security_group['GroupId'],
                                                             IpPermissions = permissions_config)
-        logging.info("Security Group ",self.security_group_name," created successfully")
+        logging.info(f"Security Group {self.security_group_name} created successfully")
         print("Security Group ",self.security_group_name," created successfully")
         
         self.counter += 1
@@ -278,7 +278,7 @@ class Instance():
                 if e["GroupName"] == self.security_group_name:
                     
                     r = self.cursor.client.delete_security_group(GroupName=e["GroupName"], GroupId=e["GroupId"])
-                    logging.info("Security Group ",self.security_group['GroupId']," deleted successfully")
+                    logging.info(f"Security Group {self.security_group['GroupId'] }deleted successfully")
                     print("Security Group ",self.security_group['GroupId']," deleted successfully")    
 
 # Imagem
@@ -294,7 +294,7 @@ def delete_image_function(client, image_id):
         
         if image["ImageId"] == image_id:
             client.deregister_image(ImageId = image_id)
-            logging.info("Image ", image_id, "deleted successfuly")
+            logging.info(f"Image {image_id} deleted successfuly")
             print("Image ", image_id, "deleted successfuly")
             return True
     

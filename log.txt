@@ -1,0 +1,1 @@
+2021-12-03 22:46:57,547 - INFO - Found credentials in shared credentials file: ~/.aws/credentials
