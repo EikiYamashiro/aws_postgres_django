@@ -3,6 +3,8 @@ import boto3
 import time
 OHIO_NAME = "ohio_key_pair"
 NORTH_VIRGINIA_NAME = "north_virginia_key_pair"
+import logging
+logging.basicConfig(filename='log.txt', filemode='w',format='%(asctime)s - %(levelname)s - %(message)s',level=logging.INFO)
 
 def create_client(region, tipo="ec2"):
     
@@ -16,7 +18,9 @@ def create_key_pair(client, name):
 
         if KeyPair["KeyName"] == name:
             
+            logging.info("KeyName ", name, " already exists")
             print("KeyName ", name, " already exists")
+
             name_flag = False
             return False
             break
@@ -24,6 +28,7 @@ def create_key_pair(client, name):
     if name_flag:
         
         response = client.create_key_pair(KeyName=name)
+        logging.info("KeyPair ",name," created successfully")
         print("KeyPair ",name," created successfully")
         return response
 
@@ -34,12 +39,14 @@ def delete_key_pair(client , name):
         if KeyPair["KeyName"] == name:
 
             response = client.delete_key_pair(KeyName=name)
+            logging.info("KeyPair ",name," deleted successfully")
             print("KeyPair ",name," deleted successfully")
             
             return True
             
             break
 
+    logging.info("Unable to delete KeyPair ", name)
     print("Unable to delete KeyPair ", name)
     return False
 
@@ -70,6 +77,7 @@ def create_instance(hw, os, region, client, KeyPair, script, security_group_id):
     
     waiter.wait(InstanceIds=[instance["Instances"][0]["InstanceId"]])
     
+    logging.info(f'Instance {instance["Instances"][0]["InstanceId"]} created successfully')
     print(f'Instance {instance["Instances"][0]["InstanceId"]} created successfully')
     
     return instance
@@ -127,7 +135,7 @@ def create_auto_scaling_policy(client, auto_scaling_group_name, load_balancer, t
         }
     )
 
-    class Cursor():
+class Cursor():
     
     def __init__(self , client, region, name, keypair=None):
         self.client = client
@@ -148,6 +156,7 @@ def create_auto_scaling_policy(client, auto_scaling_group_name, load_balancer, t
             delete_key_pair(self.client, self.name)
             
         else: 
+            logging.info("Operation canceled")
             print("Operation canceled")
             
     def get_vpc_id(self):
@@ -174,6 +183,7 @@ class Cursor():
             delete_key_pair(self.client, self.name)
             
         else: 
+            logging.info("Operation canceled")
             print("Operation canceled")
             
     def get_vpc_id(self):
@@ -206,9 +216,11 @@ class Instance():
         self.script = script
         
         if self.hw == None:
+            logging.info("Set the instance hardware!")
             print("Set the instance hardware!")
             
         if self.os == None:
+            logging.info("Set the instance operational system!")
             print("Set the instance operational system!")
         
         self.instance = create_instance(self.hw, 
@@ -234,9 +246,11 @@ class Instance():
     
             waiter.wait(InstanceIds=[self.id])
             
+            logging.info("Instance ",self.id," deleted successfully")
             print("Instance ",self.id," deleted successfully")
             
         else: 
+            logging.info("Operation canceled")
             print("Operation canceled")
         
     def create_security_group(self, permissions_config):
@@ -250,6 +264,7 @@ class Instance():
         
         self.cursor.client.authorize_security_group_ingress(GroupId = self.security_group['GroupId'],
                                                             IpPermissions = permissions_config)
+        logging.info("Security Group ",self.security_group_name," created successfully")
         print("Security Group ",self.security_group_name," created successfully")
         
         self.counter += 1
@@ -263,6 +278,7 @@ class Instance():
                 if e["GroupName"] == self.security_group_name:
                     
                     r = self.cursor.client.delete_security_group(GroupName=e["GroupName"], GroupId=e["GroupId"])
+                    logging.info("Security Group ",self.security_group['GroupId']," deleted successfully")
                     print("Security Group ",self.security_group['GroupId']," deleted successfully")    
 
 # Imagem
@@ -278,6 +294,7 @@ def delete_image_function(client, image_id):
         
         if image["ImageId"] == image_id:
             client.deregister_image(ImageId = image_id)
+            logging.info("Image ", image_id, "deleted successfuly")
             print("Image ", image_id, "deleted successfuly")
             return True
     
@@ -310,6 +327,7 @@ class LoadBalancer():
         for subnet in client.describe_subnets()["Subnets"]:
             l.append(subnet['SubnetId'])
             
+        logging.info("Creating Load Balancer")
         print("Creating Load Balancer")
         waiter = self.client.get_waiter('load_balancer_available')
         response = self.client.create_load_balancer(Name = self.name,
@@ -319,8 +337,11 @@ class LoadBalancer():
                                                     SecurityGroups = [self.security_group["GroupId"]],
                                                     IpAddressType = "ipv4")
         
+        logging.info("Load Balancer created successfuly")
         print("Load Balancer created successfuly")
+        logging.info(f"DNSName {response['LoadBalancers'][0]['DNSName']}")
         print(f"DNSName {response['LoadBalancers'][0]['DNSName']}")
+        logging.info(f"LoadBalancerArn {response['LoadBalancers'][0]['LoadBalancerArn']}")
         print(f"LoadBalancerArn {response['LoadBalancers'][0]['LoadBalancerArn']}")
         
         self.arn = response['LoadBalancers'][0]['LoadBalancerArn']
@@ -329,7 +350,8 @@ class LoadBalancer():
         self.client.delete_load_balancer(LoadBalancerArn=self.arn)
         
         # Criar waite do delete: waiter.wait(LoadBalancerArns=self.arn)
-        print(f"Load Balancer {self.name} deleted successfuly")            
+        logging.info(f"Load Balancer {self.name} deleted successfuly")    
+        print(f"Load Balancer {self.name} deleted successfuly")        
 
 # Target Group
     
@@ -356,10 +378,12 @@ class TargetGroup():
         
         self.arn = response['TargetGroups'][0]['TargetGroupArn']
         
+        logging.info(f"Target Group {response} created successfuly")
         print(f"Target Group {response} created successfuly")
         
     def delete_target_group(self):
         self.client.delete_target_grouop(TargetGroupArn = self.arn)
+        logging.info(f'Target Group {response} deleted successfuly')
         print(f'Target Group {response} deleted successfuly')
 
 class Listener():
@@ -435,6 +459,7 @@ postgresOH = Instance(cursorOH, "ohio")
 postgresOH.create_security_group(SECURITY_GROUP_POSTGRES)
 postgresOH.create_instance(USER_DATA_POSTGRES)
 
+logging.info(f"Ohio Postgres Instance IP: {get_ip(postgresOH, postgresOH.id)}")
 print(f"Ohio Postgres Instance IP: {get_ip(postgresOH, postgresOH.id)}")
 
 file = open(f'C:/Users/eikis/.ssh/{postgresOH.cursor.keypair["KeyName"]}.pem', "w")
@@ -484,6 +509,7 @@ djangoNV = Instance(cursorNV, "north-virginia")
 djangoNV.create_security_group(SECURITY_GROUP_DJANGO)
 djangoNV.create_instance(USER_DATA_DJANGO)
 
+logging.info(f"North Virginia Django Instance IP: {get_ip(djangoNV, djangoNV.id)}")
 print(f"North Virginia Django Instance IP: {get_ip(djangoNV, djangoNV.id)}")
 
 file = open(f'C:/Users/eikis/.ssh/{djangoNV.cursor.keypair["KeyName"]}.pem', "w")
@@ -495,22 +521,28 @@ client_auto_scalling = create_client("us-east-1", "autoscaling")
 
 imageNV = Image(djangoNV)
 
+logging.info(f"Image {imageNV.id} created")
 print(f"Image {imageNV.id} created")
 
 djangoNV.delete_instance(force_delete = True)
+logging.info(f"Instance {djangoNV.id} (Django) from {djangoNV.region} deleted")
 print(f"Instance {djangoNV.id} (Django) from {djangoNV.region} deleted")
 
 target_groupNV = TargetGroup(client_load_balancer, "target-group-NV", 'HTTP', 8080, 'instance', cursorNV.get_vpc_id())
+logging.info(f"Target Group {target_groupNV.name} created")
 print(f"Target Group {target_groupNV.name} created")
 
 load_balancerNV = LoadBalancer(client_load_balancer, djangoNV)
 load_balancerNV.create(ec2_north_virginia)
+logging.info(f"Load Balancer {load_balancerNV.name} created")
 print(f"Load Balancer {load_balancerNV.name} created")
 
 launch_config(client_auto_scalling, "launch_config", imageNV, djangoNV.security_group["GroupId"], cursorNV)
+logging.info("Launch Configuration Created")
 print("Launch Configuration Created")
 
 as_group = auto_scalling_group(ec2_north_virginia, client_auto_scalling, target_groupNV)
+logging.info("Auto Scaling Group created")
 print("Auto Scaling Group created")
 
 attach = client_auto_scalling.attach_load_balancer_target_groups(
@@ -519,12 +551,13 @@ attach = client_auto_scalling.attach_load_balancer_target_groups(
             target_groupNV.arn,
         ]
     )
+logging.info(f"Load Balancer {load_balancerNV.name} attached to Target Group {target_groupNV.name}")
 print(f"Load Balancer {load_balancerNV.name} attached to Target Group {target_groupNV.name}")
-
 listener = Listener(client_load_balancer, load_balancerNV.arn, target_groupNV.arn)
+logging.info("Listener created")
 print("Listener created")
-
 auto_scaling_policy = create_auto_scaling_policy(client_auto_scalling, "as_name", load_balancerNV, target_groupNV)
+logging.info("Auto Scaling Poolicy created")
 print("Auto Scaling Poolicy created")
 
 flag = True
@@ -543,24 +576,24 @@ while flag:
         djangoNV.delete_security_group()
 
         imageNV.cursor.client.deregister_image(ImageId = imageNV.id)
-        print(f"Image {imageNV.id} deleted")
+        logging.info(f"Image {imageNV.id} deleted")
 
         load_balancerNV.delete()
 
         time.sleep(30)
 
         target_groupNV.client.delete_target_group(TargetGroupArn = target_groupNV.arn)
-        print(f"Target Group {target_groupNV.name} deleted")
+        logging.info(f"Target Group {target_groupNV.name} deleted")
 
         time.sleep(10)
 
         delete_as_group(client_auto_scalling, "as_name")
-        print("Auto Scaling Group deleted")
+        logging.info("Auto Scaling Group deleted")
 
         time.sleep(10)
 
         delete_launch_config(client_auto_scalling, "launch_config")
-        print("Launch Config deleted")
+        logging.info("Launch Config deleted")
         
         delete_flag = True
         while delete_flag:
